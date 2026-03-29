@@ -8,7 +8,8 @@ import {
     StyleSheet,
 } from "react-native";
 
-const API_URL = "http://10.0.0.183:8000";
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
+
 
 type Recipe = {
     recipe: string;

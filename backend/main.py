@@ -99,3 +99,8 @@ def suggest(req: SuggestRequest):
 
     results.sort(key=lambda x: x["match"], reverse=True)
     return results
+
+    
+@app.get("/")
+def root():
+    return {"message": "Backend is running"}
