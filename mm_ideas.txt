@@ -1,1 +1,3 @@
 **Ideas**
+
+- when adding pantry item, add expiration date. Item can be removed once expired and customize notifications.
