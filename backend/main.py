@@ -93,6 +93,7 @@ def suggest(req: SuggestRequest):
             "ingredients": ingredients,
             "missing": missing,
             "match": score,
+            "instructions": r.get("instructions", ""),
             "source": r.get("source", ""),
             "image": r.get("image", ""),
         })

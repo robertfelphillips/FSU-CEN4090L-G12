@@ -6,16 +6,22 @@ import {
     TouchableOpacity,
     ScrollView,
     StyleSheet,
+    Image,
+    ActivityIndicator,
 } from "react-native";
+import { router } from "expo-router";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8000";
 
+type Difficulty = "easy" | "intermediate" | "pro";
 
 type Recipe = {
     recipe: string;
     ingredients: string[];
     missing: string[];
     match: number;
+    difficulty?: Difficulty;
+    instructions?: string;
     source?: string;
     image?: string;
 };
@@ -26,11 +32,17 @@ export default function HomeScreen() {
     const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [allergyInput, setAllergyInput] = useState("");
     const [allergies, setAllergies] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [difficulty] = useState<Difficulty>("easy");
 
     const loadInventory = async () => {
-        const res = await fetch(`${API_URL}/inventory`);
-        const data = await res.json();
-        setPantry(data);
+        try {
+            const res = await fetch(`${API_URL}/inventory`);
+            const data = await res.json();
+            setPantry(data);
+        } catch (error) {
+            console.log("Error loading inventory:", error);
+        }
     };
 
     useEffect(() => {
@@ -40,25 +52,33 @@ export default function HomeScreen() {
     const addItem = async () => {
         if (!ingredient.trim()) return;
 
-        const res = await fetch(`${API_URL}/inventory`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: ingredient.trim() }),
-        });
+        try {
+            const res = await fetch(`${API_URL}/inventory`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: ingredient.trim() }),
+            });
 
-        const data = await res.json();
-        setPantry(data.pantry);
-        setIngredient("");
+            const data = await res.json();
+            setPantry(data.pantry);
+            setIngredient("");
+        } catch (error) {
+            console.log("Error adding item:", error);
+        }
     };
 
     const removeItem = async (itemName: string) => {
-        const res = await fetch(
-            `${API_URL}/inventory/${encodeURIComponent(itemName)}`,
-            { method: "DELETE" }
-        );
+        try {
+            const res = await fetch(
+                `${API_URL}/inventory/${encodeURIComponent(itemName)}`,
+                { method: "DELETE" }
+            );
 
-        const data = await res.json();
-        setPantry(data.pantry);
+            const data = await res.json();
+            setPantry(data.pantry);
+        } catch (error) {
+            console.log("Error removing item:", error);
+        }
     };
 
     const addAllergy = () => {
@@ -71,15 +91,39 @@ export default function HomeScreen() {
         setAllergies(allergies.filter((a) => a !== name));
     };
 
-    const fetchRecipes = async () => {
-        const res = await fetch(`${API_URL}/suggest`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ pantry, allergies }),
+    const openRecipeDetails = (item: Recipe) => {
+        router.push({
+            pathname: "/recipe-details",
+            params: {
+                recipe: item.recipe,
+                ingredients: JSON.stringify(item.ingredients || []),
+                missing: JSON.stringify(item.missing || []),
+                instructions: item.instructions || "",
+                difficulty: item.difficulty || "easy",
+                source: item.source || "",
+                image: item.image || "",
+                match: String(Math.round(item.match * 100)),
+            },
         });
+    };
 
-        const data = await res.json();
-        setRecipes(data);
+    const fetchRecipes = async () => {
+        try {
+            setLoading(true);
+
+            const res = await fetch(`${API_URL}/suggest`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pantry, allergies, difficulty }),
+            });
+
+            const data = await res.json();
+            setRecipes(data);
+        } catch (error) {
+            console.log("Error fetching recipes:", error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -88,7 +132,7 @@ export default function HomeScreen() {
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
         >
-            <Text style={styles.title}>MealMatch</Text>
+            <Text style={styles.title}>StirFry</Text>
             <Text style={styles.subtitle}>Find meals from what you already have.</Text>
 
             <View style={styles.card}>
@@ -107,8 +151,16 @@ export default function HomeScreen() {
                         <Text style={styles.primaryButtonText}>Add Item</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.secondaryButton} onPress={fetchRecipes}>
-                        <Text style={styles.secondaryButtonText}>Suggest</Text>
+                    <TouchableOpacity
+                        style={[styles.secondaryButton, loading && styles.disabledButton]}
+                        onPress={fetchRecipes}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color="#111111" />
+                        ) : (
+                            <Text style={styles.secondaryButtonText}>Suggest</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
 
@@ -118,7 +170,10 @@ export default function HomeScreen() {
                     pantry.map((item, index) => (
                         <View key={`${item}-${index}`} style={styles.pillRow}>
                             <Text style={styles.pillText}>{item}</Text>
-                            <TouchableOpacity onPress={() => removeItem(item)} style={styles.removeChip}>
+                            <TouchableOpacity
+                                onPress={() => removeItem(item)}
+                                style={styles.removeChip}
+                            >
                                 <Text style={styles.removeChipText}>Remove</Text>
                             </TouchableOpacity>
                         </View>
@@ -137,7 +192,10 @@ export default function HomeScreen() {
                     style={styles.input}
                 />
 
-                <TouchableOpacity style={styles.secondaryButtonFull} onPress={addAllergy}>
+                <TouchableOpacity
+                    style={styles.secondaryButtonFull}
+                    onPress={addAllergy}
+                >
                     <Text style={styles.secondaryButtonText}>Add Allergy</Text>
                 </TouchableOpacity>
 
@@ -147,7 +205,10 @@ export default function HomeScreen() {
                     allergies.map((item, index) => (
                         <View key={`${item}-${index}`} style={styles.pillRow}>
                             <Text style={styles.pillText}>{item}</Text>
-                            <TouchableOpacity onPress={() => removeAllergy(item)} style={styles.removeChip}>
+                            <TouchableOpacity
+                                onPress={() => removeAllergy(item)}
+                                style={styles.removeChip}
+                            >
                                 <Text style={styles.removeChipText}>Remove</Text>
                             </TouchableOpacity>
                         </View>
@@ -162,7 +223,16 @@ export default function HomeScreen() {
                     <Text style={styles.emptyText}>No suggestions yet.</Text>
                 ) : (
                     recipes.map((item, index) => (
-                        <View key={`${item.recipe}-${index}`} style={styles.recipeCard}>
+                        <TouchableOpacity
+                            key={`${item.recipe}-${index}`}
+                            style={styles.recipeCard}
+                            onPress={() => openRecipeDetails(item)}
+                            activeOpacity={0.85}
+                        >
+                            {item.image ? (
+                                <Image source={{ uri: item.image }} style={styles.recipeImage} />
+                            ) : null}
+
                             <View style={styles.recipeHeader}>
                                 <Text style={styles.recipeTitle}>{item.recipe}</Text>
                                 <View style={styles.matchBadge}>
@@ -172,6 +242,10 @@ export default function HomeScreen() {
                                 </View>
                             </View>
 
+                            <Text style={styles.recipeDifficulty}>
+                                Difficulty: {item.difficulty || "easy"}
+                            </Text>
+
                             <Text style={styles.recipeMeta}>
                                 Ingredients: {item.ingredients.join(", ")}
                             </Text>
@@ -179,7 +253,9 @@ export default function HomeScreen() {
                             <Text style={styles.recipeMissing}>
                                 Missing: {item.missing.length ? item.missing.join(", ") : "None"}
                             </Text>
-                        </View>
+
+                            <Text style={styles.tapHint}>Tap to view instructions</Text>
+                        </TouchableOpacity>
                     ))
                 )}
             </View>
@@ -259,6 +335,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         paddingVertical: 14,
         alignItems: "center",
+        justifyContent: "center",
     },
     secondaryButtonFull: {
         backgroundColor: "#E9E9ED",
@@ -311,6 +388,12 @@ const styles = StyleSheet.create({
         padding: 16,
         marginTop: 12,
     },
+    recipeImage: {
+        width: "100%",
+        height: 180,
+        borderRadius: 16,
+        marginBottom: 12,
+    },
     recipeHeader: {
         flexDirection: "row",
         justifyContent: "space-between",
@@ -334,6 +417,12 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: "700",
     },
+    recipeDifficulty: {
+        color: "#6E6E73",
+        fontSize: 14,
+        marginTop: 10,
+        textTransform: "capitalize",
+    },
     recipeMeta: {
         color: "#3A3A3C",
         fontSize: 14,
@@ -345,5 +434,14 @@ const styles = StyleSheet.create({
         fontSize: 14,
         marginTop: 8,
         lineHeight: 20,
+    },
+    tapHint: {
+        color: "#007AFF",
+        fontSize: 13,
+        marginTop: 10,
+        fontWeight: "600",
+    },
+    disabledButton: {
+        opacity: 0.7,
     },
 });

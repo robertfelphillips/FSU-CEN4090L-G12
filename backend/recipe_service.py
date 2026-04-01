@@ -28,8 +28,9 @@ def normalize_mealdb_recipe(meal: dict):
             ingredients.append(name.strip().lower())
 
     return {
-        "recipe": meal.get("strMeal", "Unknown"),
-        "ingredients": ingredients,
-        "source": meal.get("strSource") or meal.get("strYoutube") or "",
-        "image": meal.get("strMealThumb") or "",
-    }
+    "recipe": meal.get("strMeal", "Unknown"),
+    "ingredients": ingredients,
+    "instructions": meal.get("strInstructions") or "",
+    "source": meal.get("strSource") or meal.get("strYoutube") or "",
+    "image": meal.get("strMealThumb") or "",
+}
