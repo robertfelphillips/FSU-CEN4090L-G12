@@ -89,6 +89,7 @@ def suggest(req: SuggestRequest):
         missing = [item for item in ingredients if item not in pantry_set]
 
         results.append({
+            "id": r.get("id", ""),
             "recipe": r["recipe"],
             "ingredients": ingredients,
             "missing": missing,

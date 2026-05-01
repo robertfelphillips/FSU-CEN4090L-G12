@@ -27,10 +27,13 @@ def normalize_mealdb_recipe(meal: dict):
         if name and name.strip():
             ingredients.append(name.strip().lower())
 
+    instructions = meal.get("strInstructions") or ""
+
     return {
-    "recipe": meal.get("strMeal", "Unknown"),
-    "ingredients": ingredients,
-    "instructions": meal.get("strInstructions") or "",
-    "source": meal.get("strSource") or meal.get("strYoutube") or "",
-    "image": meal.get("strMealThumb") or "",
-}
+        "id": meal.get("idMeal", ""),
+        "recipe": meal.get("strMeal", "Unknown"),
+        "ingredients": ingredients,
+        "instructions": instructions,
+        "source": meal.get("strSource") or meal.get("strYoutube") or "",
+        "image": meal.get("strMealThumb") or "",
+    }
